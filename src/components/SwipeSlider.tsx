@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import attendanceService, { ClockState } from '../services/attendanceService';
+import { LocationService } from '../services/locationService';
 
 interface SwipeSliderProps {
   onSuccess?: () => void;
@@ -20,10 +21,11 @@ export const SwipeSlider: React.FC<SwipeSliderProps> = ({ onSuccess }) => {
   const clockStateRef = useRef<ClockState | null>(null);
   const [loading, setLoading] = useState(true);
   const [sliderLoading, setSliderLoading] = useState(false);
+  const [sliderWidth, setSliderWidth] = useState(300);
   const pan = useRef(new Animated.ValueXY()).current;
-  const sliderWidth = 300;
   const circleSize = 60;
-  const maxTravel = sliderWidth - circleSize - 16; // Full distance to reach end
+  const knobStartLeft = 8;
+  const maxTravel = Math.max(0, sliderWidth - circleSize - knobStartLeft); // Reach far-right edge
 
   useEffect(() => {
     fetchClockState();
@@ -48,14 +50,14 @@ export const SwipeSlider: React.FC<SwipeSliderProps> = ({ onSuccess }) => {
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderMove: (e, { dx }) => {
-        if (dx >= 0 && dx <= maxTravel) {
-          pan.x.setValue(dx);
-        }
+        const clampedDx = Math.max(0, Math.min(dx, maxTravel));
+        pan.x.setValue(clampedDx);
       },
       onPanResponderRelease: async (e, { dx }) => {
-        console.log('Swipe distance:', dx, 'Max travel:', maxTravel, 'Threshold:', maxTravel * 0.85);
-        // Trigger when user swipes at least 85% of the way
-        if (dx >= maxTravel * 0.85) {
+        const clampedDx = Math.max(0, Math.min(dx, maxTravel));
+        console.log('Swipe distance:', clampedDx, 'Max travel:', maxTravel);
+        // Trigger only when user reaches the end of the slider
+        if (clampedDx >= maxTravel) {
           const currentClockState = clockStateRef.current;
           console.log('Threshold met! Clock state from ref:', currentClockState);
           // User swiped close enough to the end
@@ -65,7 +67,15 @@ export const SwipeSlider: React.FC<SwipeSliderProps> = ({ onSuccess }) => {
             if (currentClockState?.state == 0) {
               // Clock in
               console.log('Attempting to clock in...');
-              const response = await attendanceService.clockIn();
+              const currentLocation = await LocationService.getCurrentLocation();
+              if (!currentLocation) {
+                throw new Error('Unable to get your location. Please enable location and try again.');
+              }
+
+              const response = await attendanceService.clockIn({
+                latitude: currentLocation.latitude,
+                longitude: currentLocation.longitude,
+              });
               console.log('Clock in response:', response);
               Alert.alert('Success', 'Clocked in successfully!');
               await fetchClockState();
@@ -153,20 +163,26 @@ export const SwipeSlider: React.FC<SwipeSliderProps> = ({ onSuccess }) => {
           </Text>
         </View>
 
-        <View style={styles.timeRow}>
+        {/* <View style={styles.timeRow}>
           <Text style={styles.timeText}>
             Break In: {clockState?.break_in ? formatTime12Hour(clockState?.break_in || null) : '--:--:--'}
           </Text>
           <Text style={styles.timeText}>
             Break Out: {clockState?.break_out ? formatTime12Hour(clockState?.break_out || null) : '--:--:--'}
           </Text>
-        </View>
+        </View> */}
 
         
       </View>
 
       <View
         style={[styles.sliderContainer, { backgroundColor }]}
+        onLayout={(event) => {
+          const width = event.nativeEvent.layout.width;
+          if (width > 0 && width !== sliderWidth) {
+            setSliderWidth(width);
+          }
+        }}
         {...panResponder.panHandlers}
       >
         <Animated.View
@@ -178,7 +194,7 @@ export const SwipeSlider: React.FC<SwipeSliderProps> = ({ onSuccess }) => {
           ]}
         >
           {sliderLoading ? (
-            <ActivityIndicator size="small" color="#fff" />
+            <ActivityIndicator size="small" color="#007AFF" />
           ) : (
             <MaterialIcons
               name="arrow-forward"

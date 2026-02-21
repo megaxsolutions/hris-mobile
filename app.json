@@ -10,7 +10,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "description": "MegaX Employee App for Time Tracking, Leave Requests, and HR Management",
-    "owner": "megax",
+    "owner": "megaxsolutions",
     "plugins": [
       [
         "expo-camera",
@@ -76,9 +76,11 @@
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE",
         "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE"
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
       ],
-      "usesCleartextTraffic": false
+      "usesCleartextTraffic": false,
+      "googleMapsApiKey": "AIzaSyAYavyprK00u6C3Nz0UfrxiM3_ufTjob9o"
     },
     "web": {
       "output": "static",
@@ -96,6 +98,11 @@
     },
     "assetBundlePatterns": [
       "**/*"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "725e6361-35f6-404f-88ed-d8ae1d781c44"
+      }
+    }
   }
 }

@@ -1,19 +1,21 @@
-# 📚 Documentation Index
+# 📚 Documentation Index - Master Guide
 
-## Welcome to Employee Management App!
+**Last Updated**: February 20, 2026  
+**Project**: HRIS Mobile App (React Native/Expo)  
+**Status**: ✅ Phase 2 Complete - Features Implemented
 
-This file helps you navigate all the documentation and resources available for this project.
+This master index helps you navigate all documentation for the HRIS mobile application.
 
 ---
 
-## 🎯 START HERE
+## 🎯 QUICK START
 
-**New to this project?** Start with these files in this order:
+**First time here?** Start with:
+1. [PROJECT_COMPLETION_REPORT.md](PROJECT_COMPLETION_REPORT.md) - What's been built
+2. [DEVELOPMENT_QUICK_REFERENCE.md](DEVELOPMENT_QUICK_REFERENCE.md) - Common tasks
+3. [SETUP_GUIDE.md](SETUP_GUIDE.md) - Installation
 
-1. **00_START_HERE.txt** - Visual summary of what's been created
-2. **README.md** - Project overview and features
-3. **SETUP_GUIDE.md** - Installation and setup instructions
-4. **QUICK_REFERENCE.md** - Code examples and snippets
+**Want to know everything?** → [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)
 
 ---
 
@@ -40,6 +42,14 @@ This file helps you navigate all the documentation and resources available for t
 |------|---------|-----------|
 | `API_DOCUMENTATION.md` | API endpoints & specs | Building backend |
 | `COMMAND_REFERENCE.md` | Terminal commands | Running commands |
+
+### Deployment & Tunnel
+| File | Purpose | Read When |
+|------|---------|-----------|
+| `TUNNEL_SETUP.md` | Expo Tunnel configuration & guide | Remote testing & team dev |
+| `TUNNEL_QUICK_REFERENCE.md` | Quick tunnel commands & workflow | Daily tunnel usage |
+| `ANDROID_SETUP.md` | Android-specific setup | Setting up Android |
+| `LOCATION_TRACKING.md` | Location feature documentation | Implementing location |
 
 ---
 
@@ -135,6 +145,10 @@ This file helps you navigate all the documentation and resources available for t
 **...learn best practices**
 → DEVELOPMENT_GUIDE.md
 
+**...test remotely with tunnel**
+→ TUNNEL_SETUP.md (Section: "Quick Start")
+→ TUNNEL_QUICK_REFERENCE.md
+
 ---
 
 ## 📱 Documentation for Different Roles
@@ -162,10 +176,12 @@ Read in order:
 3. IMPLEMENTATION_CHECKLIST.md
 
 ### DevOps/Deployment Engineer
-Read:
+Read in order:
 1. SETUP_GUIDE.md
-2. COMMAND_REFERENCE.md
-3. README.md (Deployment section)
+2. TUNNEL_SETUP.md
+3. COMMAND_REFERENCE.md
+4. README.md (Deployment section)
+5. TUNNEL_QUICK_REFERENCE.md
 
 ### Project Manager
 Read:

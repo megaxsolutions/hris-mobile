@@ -51,10 +51,15 @@ npm install
 ### 2. Environment Setup
 Update `.env` file:
 ```env
-EXPO_PUBLIC_API_URL=http://your-backend-api.com/api
+EXPO_PUBLIC_APP_ENV=local
+EXPO_PUBLIC_API_URL_LOCAL=http://localhost:3000/api
+EXPO_PUBLIC_API_URL_STAGING=https://staging-api.yourdomain.com/api
+EXPO_PUBLIC_API_URL_PRODUCTION=https://api.yourdomain.com
 EXPO_PUBLIC_APP_NAME=Employee Management App
 EXPO_PUBLIC_VERSION=1.0.0
 ```
+
+Switch backend endpoint by changing only `EXPO_PUBLIC_APP_ENV` to `local`, `staging`, or `production`.
 
 ### 3. Start Development Server
 ```bash

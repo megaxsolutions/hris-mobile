@@ -14,7 +14,9 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { SwipeSlider } from '../components/SwipeSlider';
 import { LocationMap } from '../components/LocationMap';
 import dashboardService, { Bulletin } from '../services/dashboardService';
-const IMAGE_URL = process.env.EXPO_PUBLIC_API_URL+"/uploads" || 'http://localhost:3000/api';
+import { API_SERVER_URL } from '../utils/environment';
+
+const IMAGE_URL = `${API_SERVER_URL}/uploads`;
 const { width } = Dimensions.get('window');
 
 export const DashboardScreen: React.FC = () => {

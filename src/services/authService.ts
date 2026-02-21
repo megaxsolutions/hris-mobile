@@ -114,4 +114,62 @@ export const AuthService = {
       return null;
     }
   },
+
+  async requestPasswordReset(email: string): Promise<boolean> {
+    try {
+      const response = await apiClient.post('/employees/request-password-reset', {
+        email,
+      });
+
+      if (response.data) {
+        // Store email for later use in verification
+        await AsyncStorage.setItem('resetEmail', email);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error requesting password reset:', error);
+      throw error;
+    }
+  },
+
+  async verifyResetCode(email: string, code: string): Promise<boolean> {
+    try {
+      const response = await apiClient.post('/employees/verify-reset-code', {
+        email,
+        code,
+      });
+
+      if (response.data) {
+        // Store verification token for password change
+        await AsyncStorage.setItem('resetToken', response.data.resetToken || '');
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error verifying reset code:', error);
+      throw error;
+    }
+  },
+
+  async resetPassword(email: string, code: string, newPassword: string): Promise<boolean> {
+    try {
+      const response = await apiClient.post('/employees/reset-password', {
+        email,
+        code,
+        newPassword,
+      });
+
+      if (response.data) {
+        // Clear reset-related storage
+        await AsyncStorage.removeItem('resetEmail');
+        await AsyncStorage.removeItem('resetToken');
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      throw error;
+    }
+  },
 };

@@ -227,7 +227,10 @@ export const LocationService = {
       }, { headers });
       console.log('Location saved to database');
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.response?.status === 404) {
+        return null;
+      }
       console.error('Error saving location to database:', error);
       return null;
     }
@@ -315,6 +318,64 @@ export const LocationService = {
     } catch (error) {
       console.error('Error caching location:', error);
       return false;
+    }
+  },
+
+  /**
+   * Watch position with real-time updates (for maps/dashboard)
+   * Returns a subscription ID that can be used to stop watching
+   */
+  async watchPosition(
+    onLocationChange: (location: LocationData) => void,
+    onError: (error: any) => void,
+    intervalMs: number = 5000 // Update every 5 seconds or 10 meters
+  ): Promise<any> {
+    try {
+      const hasPermission = await this.requestForegroundPermissions();
+      if (!hasPermission) {
+        throw new Error('Location permission not granted');
+      }
+
+      const subscription = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.Balanced,
+          timeInterval: intervalMs,
+          distanceInterval: 10, // Update if moved 10+ meters
+        },
+        (location) => {
+          const locationData: LocationData = {
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+            accuracy: location.coords.accuracy,
+            altitude: location.coords.altitude,
+            altitudeAccuracy: location.coords.altitudeAccuracy,
+            heading: location.coords.heading,
+            speed: location.coords.speed,
+            provider: location.coords.heading !== undefined ? 'GPS' : 'NETWORK',
+          };
+
+          onLocationChange(locationData);
+        }
+      );
+
+      return subscription;
+    } catch (error) {
+      console.error('Error in watchPosition:', error);
+      onError(error);
+      return null;
+    }
+  },
+
+  /**
+   * Clear a location watch subscription
+   */
+  clearWatch(subscription: any): void {
+    try {
+      if (subscription) {
+        subscription.remove();
+      }
+    } catch (error) {
+      console.error('Error clearing watch:', error);
     }
   },
 };

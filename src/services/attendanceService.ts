@@ -31,15 +31,49 @@ interface UserData {
   [key: string]: any;
 }
 
+const createDefaultClockState = (empId: string): ClockState => ({
+  break_state: 0,
+  coaching_state: 0,
+  lunch_state: 0,
+  state: 0,
+  emp_ID: parseInt(empId, 10) || 0,
+  id: 0,
+  time_in: null,
+  time_out: null,
+  break_in: null,
+  break_out: null,
+  coaching_start: null,
+  coaching_end: null,
+});
+
+interface ClockInPayload {
+  latitude: number;
+  longitude: number;
+}
+
+export interface AssignedGeofence {
+  id: number;
+  name: string;
+  latitude: number;
+  longitude: number;
+  radius_meters: number;
+}
+
+interface MobileGeofenceResponse {
+  has_geofence: boolean;
+  geofence: AssignedGeofence | null;
+}
+
 const attendanceService = {
   /**
    * Get the current clock state of the user
    */
   getUserClockState: async (): Promise<ClockState> => {
+    let userData: UserData | null = null;
     try {
       const token = await AsyncStorage.getItem('userToken');
       const userDataStr = await AsyncStorage.getItem('user_data');
-      const userData: UserData | null = userDataStr ? JSON.parse(userDataStr) : null;
+      userData = userDataStr ? JSON.parse(userDataStr) : null;
       
       
       if (!token || !userData?.emp_ID) {
@@ -84,21 +118,17 @@ const attendanceService = {
         };
       }
 
-      throw new Error('Invalid response from server');
+      return createDefaultClockState(userData.emp_ID);
     } catch (error: any) {
       console.error('Error fetching clock state:', error);
-      throw new Error(
-        error.response?.data?.message ||
-        error.message ||
-        'Unable to fetch clock state'
-      );
+      return createDefaultClockState(userData?.emp_ID || '0');
     }
   },
 
   /**
    * Clock in the user
    */
-  clockIn: async (): Promise<any> => {
+  clockIn: async (payload: ClockInPayload): Promise<any> => {
     try {
       const token = await AsyncStorage.getItem('userToken');
       const userDataStr = await AsyncStorage.getItem('user_data');
@@ -114,8 +144,12 @@ const attendanceService = {
       };
 
       const response = await apiClient.post(
-        '/attendances/add_attendance_time_in',
-        {emp_id: userData.emp_ID},
+        '/attendances/mobile/clock_in',
+        {
+          emp_id: userData.emp_ID,
+          latitude: payload.latitude,
+          longitude: payload.longitude,
+        },
         { headers }
       );
       //console.log('Clock in response data:', response.data);
@@ -210,6 +244,40 @@ const attendanceService = {
         error.message ||
         'Unable to fetch attendance records'
       );
+    }
+  },
+
+  /**
+   * Get assigned geofence for mobile clock-in map display
+   */
+  getMobileAssignedGeofence: async (): Promise<AssignedGeofence | null> => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      const userDataStr = await AsyncStorage.getItem('user_data');
+      const userData: UserData | null = userDataStr ? JSON.parse(userDataStr) : null;
+
+      if (!token || !userData?.emp_ID) {
+        throw new Error('Missing authentication credentials');
+      }
+
+      const headers = {
+        'X-JWT-TOKEN': token,
+        'X-EMP-ID': userData.emp_ID,
+      };
+
+      const response = await apiClient.get<{ data: MobileGeofenceResponse }>(
+        `/attendances/mobile/geofence/${userData.emp_ID}`,
+        { headers }
+      );
+
+      if (response.data?.data?.has_geofence && response.data.data.geofence) {
+        return response.data.data.geofence;
+      }
+
+      return null;
+    } catch (error: any) {
+      console.error('Error fetching mobile assigned geofence:', error);
+      return null;
     }
   },
 };

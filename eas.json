@@ -5,15 +5,40 @@
         "buildType": "apk"
       },
       "ios": {
-        "buildType": "simulator"
+        "simulator": true,
+        "distribution": "internal"
       }
     },
     "preview2": {
       "android": {
-        "gradleCommand": ":app:assembleRelease"
+        "buildType": "apk"
       },
       "ios": {
-        "buildType": "archive"
+        "simulator": true,
+        "distribution": "internal"
+      }
+    },
+    "tunnel-preview": {
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "simulator": true,
+        "distribution": "internal"
+      },
+      "env": {
+        "EXPO_UPDATE_URL": "https://u.expo.dev/your-update-channel-id",
+        "EXPO_RUNTIME_VERSION": "1.0.0"
+      }
+    },
+    "development": {
+      "android": {
+        "buildType": "apk",
+        "distribution": "internal"
+      },
+      "ios": {
+        "simulator": true,
+        "distribution": "internal"
       }
     },
     "production": {
@@ -21,16 +46,12 @@
         "buildType": "app-bundle"
       },
       "ios": {
-        "buildType": "archive"
+        "distribution": "store"
       }
     }
   },
   "submit": {
     "production": {
-      "android": {
-        "serviceAccount": "keyfile.json",
-        "track": "internal"
-      },
       "ios": {
         "appleId": "your-apple-id@example.com",
         "ascAppId": "123456789",
@@ -39,6 +60,7 @@
     }
   },
   "cli": {
-    "version": ">= 5.0.0"
+    "version": ">= 5.0.0",
+    "appVersionSource": "local"
   }
 }

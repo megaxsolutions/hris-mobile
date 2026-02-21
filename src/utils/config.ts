@@ -1,5 +1,8 @@
+import { API_BASE_URL, APP_ENV } from './environment';
+
 export const APP_CONFIG = {
-  API_URL: process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api',
+  API_URL: API_BASE_URL,
+  APP_ENV,
   APP_NAME: process.env.EXPO_PUBLIC_APP_NAME || 'Employee Management App',
   VERSION: process.env.EXPO_PUBLIC_VERSION || '1.0.0',
   

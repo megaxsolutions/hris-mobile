@@ -13,6 +13,9 @@ import { TimeAdjustmentRequestScreen } from '../screens/TimeAdjustmentRequestScr
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { SplashScreen } from '../screens/SplashScreen';
+import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen';
+import { VerifyCodeScreen } from '../screens/VerifyCodeScreen';
+import { ChangePasswordScreen } from '../screens/ChangePasswordScreen';
 import { DrawerContent } from '../components/DrawerContent';
 import { useAuth } from '../context/AuthContext';
 
@@ -21,8 +24,12 @@ const Stack = createNativeStackNavigator();
 
 export type RootStackParamList = {
   Login: undefined;
+  ForgotPassword: undefined;
+  VerifyCode: { email: string };
+  ChangePassword: { email: string; code: string };
   Drawer: undefined;
 };
+
 
 export type DrawerParamList = {
   Dashboard: undefined;
@@ -43,6 +50,9 @@ function AuthStack() {
       }}
     >
       <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+      <Stack.Screen name="VerifyCode" component={VerifyCodeScreen} />
+      <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
     </Stack.Navigator>
   );
 }
