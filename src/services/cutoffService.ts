@@ -29,13 +29,20 @@ const cutoffService = {
         'X-EMP-ID': userData.emp_ID,
       };
 
-      const response = await apiClient.get<{ data: Cutoff[] }>(
-        '/cutoffs/get_all_cutoff',
+      // Backend currently exposes only /cutoffs/get_latest_cutoff.
+      // Normalize to Cutoff[] so existing screens can keep using the same flow.
+      const response = await apiClient.get<{ data: Cutoff | Cutoff[] }>(
+        '/cutoffs/get_latest_cutoff',
         { headers }
       );
 
-      if (response.data && Array.isArray(response.data.data)) {
-        return response.data.data;
+      const cutoffData = response.data?.data;
+      if (Array.isArray(cutoffData)) {
+        return cutoffData;
+      }
+
+      if (cutoffData && typeof cutoffData === 'object') {
+        return [cutoffData];
       }
 
       return [];

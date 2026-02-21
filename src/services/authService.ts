@@ -36,21 +36,39 @@ export const AuthService = {
         emp_ID,
         password,
       });
-       console.log('Login response:', response.data);
+      console.log('Login response:', response.data);
       if (response.data) {
+        const responseData = response.data;
+        const userData = responseData.user_data || responseData.login?.[0] || null;
+
+        const firstName = userData?.fName || userData?.first_name || '';
+        const lastName = userData?.lName || userData?.last_name || '';
+        const fullName = `${firstName} ${lastName}`.trim();
+        const userId = String(responseData.emp_id || userData?.emp_ID || emp_ID);
+
         const user: AuthUser = {
-          id: response.data.emp_id,
-          emp_ID: response.data.emp_id,
-          token: response.data.data,
-          refreshToken: response.data.refreshToken,
-          name: response.data.user_data.fName + ' ' + response.data.user_data.lName,
-          email: response.data.user_data.email,
+          id: userId,
+          emp_ID: userId,
+          token: responseData.data,
+          refreshToken: responseData.refreshToken,
+          name: fullName || `Employee ${userId}`,
+          email: userData?.email || '',
         };
 
         await AsyncStorage.setItem('authUser', JSON.stringify(user));
         await AsyncStorage.setItem('userToken', user.token ?? '');
         await AsyncStorage.setItem('refreshToken', user.refreshToken ?? '');
-        await AsyncStorage.setItem('user_data', JSON.stringify(response.data.user_data));
+        await AsyncStorage.setItem(
+          'user_data',
+          JSON.stringify(
+            userData || {
+              emp_ID: userId,
+              first_name: firstName,
+              last_name: lastName,
+              email: user.email,
+            }
+          )
+        );
 
         return user;
       }

@@ -9,35 +9,48 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import attendanceService, { ClockState } from '../services/attendanceService';
+import attendanceService, { ClockState, TodayShiftAttendance } from '../services/attendanceService';
 import { LocationService } from '../services/locationService';
 
 interface SwipeSliderProps {
   onSuccess?: () => void;
+  isInsideWorkingSite?: boolean;
 }
 
-export const SwipeSlider: React.FC<SwipeSliderProps> = ({ onSuccess }) => {
+export const SwipeSlider: React.FC<SwipeSliderProps> = ({
+  onSuccess,
+  isInsideWorkingSite,
+}) => {
   const [clockState, setClockState] = useState<ClockState | null>(null);
   const clockStateRef = useRef<ClockState | null>(null);
+  const [todayShiftAttendance, setTodayShiftAttendance] = useState<TodayShiftAttendance | null>(null);
   const [loading, setLoading] = useState(true);
   const [sliderLoading, setSliderLoading] = useState(false);
   const [sliderWidth, setSliderWidth] = useState(300);
   const pan = useRef(new Animated.ValueXY()).current;
   const circleSize = 60;
   const knobStartLeft = 8;
-  const maxTravel = Math.max(0, sliderWidth - circleSize - knobStartLeft); // Reach far-right edge
+  const maxTravel = Math.max(0, sliderWidth - circleSize - knobStartLeft);
+  const isGeofenceBlocked = isInsideWorkingSite === false;
+  const isGeofenceBlockedRef = useRef(isGeofenceBlocked);
 
   useEffect(() => {
-    fetchClockState();
-  }, []);
+    isGeofenceBlockedRef.current = isGeofenceBlocked;
+
+    if (isGeofenceBlocked) {
+      Animated.spring(pan, {
+        toValue: { x: 0, y: 0 },
+        useNativeDriver: false,
+      }).start();
+    }
+  }, [isGeofenceBlocked, pan]);
 
   const fetchClockState = async () => {
     try {
       setLoading(true);
       const state = await attendanceService.getUserClockState();
-      console.log('Fetched clock state:', state);
       setClockState(state);
-      clockStateRef.current = state; // Update ref
+      clockStateRef.current = state;
     } catch (error) {
       console.error('Error fetching clock state:', error);
     } finally {
@@ -45,50 +58,57 @@ export const SwipeSlider: React.FC<SwipeSliderProps> = ({ onSuccess }) => {
     }
   };
 
+  const fetchTodayShiftAttendance = async () => {
+    const data = await attendanceService.getTodayShiftAttendance();
+    setTodayShiftAttendance(data);
+  };
+
+  useEffect(() => {
+    fetchClockState();
+    fetchTodayShiftAttendance();
+  }, []);
+
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponder: () => !isGeofenceBlockedRef.current,
+      onMoveShouldSetPanResponder: () => !isGeofenceBlockedRef.current,
       onPanResponderMove: (e, { dx }) => {
+        if (isGeofenceBlockedRef.current) {
+          return;
+        }
         const clampedDx = Math.max(0, Math.min(dx, maxTravel));
         pan.x.setValue(clampedDx);
       },
       onPanResponderRelease: async (e, { dx }) => {
+        if (isGeofenceBlockedRef.current) {
+          return;
+        }
+
         const clampedDx = Math.max(0, Math.min(dx, maxTravel));
-        console.log('Swipe distance:', clampedDx, 'Max travel:', maxTravel);
-        // Trigger only when user reaches the end of the slider
         if (clampedDx >= maxTravel) {
           const currentClockState = clockStateRef.current;
-          console.log('Threshold met! Clock state from ref:', currentClockState);
-          // User swiped close enough to the end
+
           try {
             setSliderLoading(true);
-            console.log('Current clock state:', currentClockState?.state);
-            if (currentClockState?.state == 0) {
-              // Clock in
-              console.log('Attempting to clock in...');
+            if (currentClockState?.state === 0) {
               const currentLocation = await LocationService.getCurrentLocation();
               if (!currentLocation) {
                 throw new Error('Unable to get your location. Please enable location and try again.');
               }
 
-              const response = await attendanceService.clockIn({
+              await attendanceService.clockIn({
                 latitude: currentLocation.latitude,
                 longitude: currentLocation.longitude,
               });
-              console.log('Clock in response:', response);
+
               Alert.alert('Success', 'Clocked in successfully!');
-              await fetchClockState();
-            } else {
-              // Clock out
-              console.log('Attempting to clock out...');
-              if (currentClockState?.emp_ID) {
-                const response = await attendanceService.clockOut(currentClockState.emp_ID.toString());
-                console.log('Clock out response:', response);
-                Alert.alert('Success', 'Clocked out successfully!');
-                await fetchClockState();
-              }
+            } else if (currentClockState?.emp_ID) {
+              await attendanceService.clockOut(currentClockState.emp_ID.toString());
+              Alert.alert('Success', 'Clocked out successfully!');
             }
+
+            await fetchClockState();
+            await fetchTodayShiftAttendance();
             onSuccess?.();
           } catch (error: any) {
             console.error('Clock action error:', error);
@@ -96,14 +116,12 @@ export const SwipeSlider: React.FC<SwipeSliderProps> = ({ onSuccess }) => {
           } finally {
             setSliderLoading(false);
           }
-          // Reset slider
+
           Animated.spring(pan, {
             toValue: { x: 0, y: 0 },
             useNativeDriver: false,
           }).start();
         } else {
-          console.log('Threshold not met, resetting slider');
-          // Not swiped far enough, reset
           Animated.spring(pan, {
             toValue: { x: 0, y: 0 },
             useNativeDriver: false,
@@ -112,6 +130,50 @@ export const SwipeSlider: React.FC<SwipeSliderProps> = ({ onSuccess }) => {
       },
     })
   ).current;
+
+  const parseLocalDate = (dateString: string | null): Date | null => {
+    if (!dateString) return null;
+    const normalized = dateString.endsWith('Z') ? dateString.replace('Z', '') : dateString;
+    const date = new Date(normalized);
+    return Number.isNaN(date.getTime()) ? null : date;
+  };
+
+  const formatShiftRange = (shiftIn: string | null, shiftOut: string | null) => {
+    const start = parseLocalDate(shiftIn);
+    const end = parseLocalDate(shiftOut);
+
+    if (!start || !end) return '--';
+
+    const startDay = start.toLocaleDateString('en-US', { weekday: 'short' });
+    const startTime = start.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+
+    const endDay = end.toLocaleDateString('en-US', { weekday: 'short' });
+    const endTime = end.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+
+    return `${startDay} ${startTime} to ${endDay} ${endTime}`;
+  };
+
+  const formatClockLabel = (dateString: string | null) => {
+    const date = parseLocalDate(dateString);
+    if (!date) return '--';
+
+    const day = date.toLocaleDateString('en-US', { weekday: 'short' });
+    const time = date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+
+    return `${day} ${time}`;
+  };
 
   if (loading) {
     return (
@@ -123,60 +185,37 @@ export const SwipeSlider: React.FC<SwipeSliderProps> = ({ onSuccess }) => {
 
   const isClockedIn = clockState?.state === 1;
   const backgroundColor = isClockedIn ? '#FF9500' : '#34C759';
-  const label = isClockedIn ? 'Slide to Clock Out' : 'Slide to Clock In';
-
-  // Helper function to format time to 12-hour format (treat as PH local time)
-  const formatTime12Hour = (dateString: string | null) => {
-    if (!dateString) return '';
-    try {
-      // The backend already returns PH time; strip timezone to avoid shifting.
-      const normalized = dateString.endsWith('Z')
-        ? dateString.replace('Z', '')
-        : dateString;
-      const date = new Date(normalized);
-
-      return date.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true,
-      });
-    } catch (error) {
-      console.error('Error formatting time:', error);
-      return '';
-    }
-  };
+  const label = isGeofenceBlocked
+    ? 'not inside the working site'
+    : isClockedIn
+      ? 'Slide to Clock Out'
+      : 'Slide to Clock In';
 
   return (
     <View style={styles.container}>
       <View style={styles.statusContainer}>
-        <Text style={styles.statusLabel}>
-          {isClockedIn ? 'Clocked In' : 'Clocked Out'}
+        <Text style={styles.shiftText}>
+          {formatShiftRange(todayShiftAttendance?.shift_in || null, todayShiftAttendance?.shift_out || null)}
         </Text>
+
+        <Text style={styles.statusLabel}>{isClockedIn ? 'Clocked In' : 'Clocked Out'}</Text>
 
         <View style={styles.timeRow}>
           <Text style={styles.timeText}>
-            Clock In: {clockState?.time_in ? formatTime12Hour(clockState?.time_in || null) : '--:--:--'}
+            Clock In: {formatClockLabel(todayShiftAttendance?.latest_time_in || clockState?.time_in || null)}
           </Text>
           <Text style={styles.timeText}>
-            Clock Out: {clockState?.time_out ? formatTime12Hour(clockState?.time_out || null) : '--:--:--'}
+            Clock Out: {formatClockLabel(todayShiftAttendance?.latest_time_out || clockState?.time_out || null)}
           </Text>
         </View>
-
-        {/* <View style={styles.timeRow}>
-          <Text style={styles.timeText}>
-            Break In: {clockState?.break_in ? formatTime12Hour(clockState?.break_in || null) : '--:--:--'}
-          </Text>
-          <Text style={styles.timeText}>
-            Break Out: {clockState?.break_out ? formatTime12Hour(clockState?.break_out || null) : '--:--:--'}
-          </Text>
-        </View> */}
-
-        
       </View>
 
       <View
-        style={[styles.sliderContainer, { backgroundColor }]}
+        style={[
+          styles.sliderContainer,
+          { backgroundColor },
+          isGeofenceBlocked && styles.sliderContainerDisabled,
+        ]}
         onLayout={(event) => {
           const width = event.nativeEvent.layout.width;
           if (width > 0 && width !== sliderWidth) {
@@ -188,19 +227,14 @@ export const SwipeSlider: React.FC<SwipeSliderProps> = ({ onSuccess }) => {
         <Animated.View
           style={[
             styles.circle,
-            {
-              transform: [{ translateX: pan.x }],
-            },
+            isGeofenceBlocked && styles.circleDisabled,
+            { transform: [{ translateX: pan.x }] },
           ]}
         >
           {sliderLoading ? (
             <ActivityIndicator size="small" color="#007AFF" />
           ) : (
-            <MaterialIcons
-              name="arrow-forward"
-              size={28}
-              color="#007AFF"
-            />
+            <MaterialIcons name="arrow-forward" size={28} color="#007AFF" />
           )}
         </Animated.View>
 
@@ -218,6 +252,12 @@ const styles = StyleSheet.create({
   statusContainer: {
     alignItems: 'center',
     marginBottom: 12,
+  },
+  shiftText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#007AFF',
+    marginBottom: 8,
   },
   statusLabel: {
     fontSize: 16,
@@ -253,6 +293,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 8,
   },
+  sliderContainerDisabled: {
+    opacity: 0.7,
+  },
   circle: {
     width: 60,
     height: 60,
@@ -268,6 +311,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 5,
+  },
+  circleDisabled: {
+    backgroundColor: '#f2f2f2',
   },
   sliderLabel: {
     fontSize: 14,

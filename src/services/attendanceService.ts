@@ -26,6 +26,14 @@ export interface AttendanceRecord {
   updated_at: string;
 }
 
+export interface TodayShiftAttendance {
+  date: string;
+  shift_in: string | null;
+  shift_out: string | null;
+  latest_time_in: string | null;
+  latest_time_out: string | null;
+}
+
 interface UserData {
   emp_ID: string;
   [key: string]: any;
@@ -244,6 +252,37 @@ const attendanceService = {
         error.message ||
         'Unable to fetch attendance records'
       );
+    }
+  },
+
+  getTodayShiftAttendance: async (): Promise<TodayShiftAttendance | null> => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      const userDataStr = await AsyncStorage.getItem('user_data');
+      const userData: UserData | null = userDataStr ? JSON.parse(userDataStr) : null;
+
+      if (!token || !userData?.emp_ID) {
+        throw new Error('Missing authentication credentials');
+      }
+
+      const headers = {
+        'X-JWT-TOKEN': token,
+        'X-EMP-ID': userData.emp_ID,
+      };
+
+      const response = await apiClient.get<{ data: TodayShiftAttendance }>(
+        `/attendances/mobile/today_shift_attendance/${userData.emp_ID}`,
+        { headers }
+      );
+
+      if (response.data?.data) {
+        return response.data.data;
+      }
+
+      return null;
+    } catch (error: any) {
+      console.error('Error fetching today shift attendance:', error);
+      return null;
     }
   },
 

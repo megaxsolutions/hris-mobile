@@ -49,3 +49,6 @@ const resolveApiBaseUrl = (): string => {
 export const API_BASE_URL = resolveApiBaseUrl();
 
 export const API_SERVER_URL = API_BASE_URL.replace(/\/api\/?$/, '');
+
+export const GOOGLE_DIRECTIONS_API_KEY =
+  process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '';

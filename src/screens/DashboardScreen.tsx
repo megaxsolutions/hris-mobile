@@ -24,6 +24,7 @@ export const DashboardScreen: React.FC = () => {
   const [bulletins, setBulletins] = useState<Bulletin[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [isInsideWorkingSite, setIsInsideWorkingSite] = useState<boolean | undefined>(undefined);
 
   const getAllBulletins = async () => {
     try {
@@ -60,10 +61,16 @@ export const DashboardScreen: React.FC = () => {
         
 
         {/* Clock In/Out Slider */}
-        <SwipeSlider onSuccess={() => getAllBulletins()} />
+        <SwipeSlider
+          onSuccess={() => getAllBulletins()}
+          isInsideWorkingSite={isInsideWorkingSite}
+        />
 
         {/* Location Map */}
-        <LocationMap height={320} />
+        <LocationMap
+          height={320}
+          onGeofenceStatusChange={(isInside) => setIsInsideWorkingSite(isInside)}
+        />
 
         {/* Quick Action Boxes */}
         <View style={styles.quickActionsContainer}>
